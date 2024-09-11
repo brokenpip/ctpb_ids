@@ -1,7 +1,7 @@
 use core::time;
 use std::{fs, thread};
 use std::path::Path;
-use std::process;
+use std::process::{self, exit};
 use std::fs::File;
 
 fn main() {
@@ -10,26 +10,46 @@ fn main() {
     let tick = time::Duration::from_millis(1000);
     let debug = false;
     let target_pid = process::id();
-    let lock_path = format!("/tmp/tpm`{}",target_pid.to_string());
+    let lock_path = format!("/tmp/tpm/{}",target_pid.to_string());
+    println!("{}",lock_path.to_string());
 
     let lock_name = directory_read("/tmp/tpm").unwrap_or_else(|| "aa".to_string());
     let lock_pid: u32 = lock_name.parse().unwrap_or(0);
 
-    if lock_pid != target_pid {
-        println!("Previous shutdown improper!!");
-    } else if lock_pid == target_pid {
-        println!("GOOD!");
-    } else {
-        
-        if debug {
-            println!("Nothing generated, error.");
+    println!("{}",debug);
+    if lock_pid == 0 {
+        let _ = File::create(&lock_path);
+        if file_check(&lock_name) {
+            println!("File created.")
         }
-    }
-
-    let _ = File::create(&lock_path);
+        let lock_name = directory_read("/tmp/tpm").unwrap_or_else(|| "aa".to_string());
+        let lock_pid: u32 = lock_name.parse().unwrap_or(0);
+        if lock_pid == target_pid {
+            println!("GOOD!");
+        } else {
+            println!("Nothing generated, error.");
+            
+        }
+    } else if lock_pid != target_pid {
+        println!("Previous shutdown improper!!");
+        exit(11);
+    } 
+    
+    let num_iterations = 10;
+    let mut i= 0;
+    //let _ = File::create(&lock_path);
 
     loop {
-        thread::sleep(tick)
+    
+        thread::sleep(tick);
+        if i >= num_iterations {
+            break;
+        }
+        i += 1;
+    }
+    match fs::remove_file(&lock_path) {
+        Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
+        Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
     }
 }
 
