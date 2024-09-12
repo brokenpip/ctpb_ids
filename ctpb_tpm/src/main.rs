@@ -32,6 +32,7 @@ fn main() {
     
     //confirm hash of IDS code
 
+    ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm";
 
     //create encrypted log file and stream changes to normal and enc variant 
 
@@ -115,4 +116,29 @@ fn directory_read(path: &str) -> Option<String> {
     }
 
     None
+}
+
+fn genhash(key: &str) -> (bool, String) {
+    let output = match Command::new("b3sum")
+        .arg(key)
+        .arg("--no-names")
+        .output() {
+        
+        Ok(output) => output,
+        Err(err) => {
+            eprintln!("Failed to execute command for key '{}': {}", key, err);
+            return (false, String::new());
+        }
+    };
+    // Convert output to string
+    let stdout_str = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr_str = String::from_utf8_lossy(&output.stderr).into_owned();
+    
+    //println!("{}", stdout_str);
+
+    if !stderr_str.is_empty() {
+        eprintln!("stderr for key '{}': {}", key, stderr_str);
+    }
+
+    (true, stdout_str)
 }
