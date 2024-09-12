@@ -26,18 +26,29 @@ fn main() {
     }
     println!("{}",debug);
 
+    //establish link to IDS
+
+
+    
+    //confirm hash of IDS code
+
+
+    //create encrypted log file and stream changes to normal and enc variant 
+
     
     let num_iterations = 10;
     let mut i= 0;
     //let _ = File::create(&lock_path);
 
     loop {
-        
+        //rate limiter
         thread::sleep(tick);
         if i >= num_iterations {
             break;
         }
         i += 1;
+
+        //self-check
         let (lca, lcb) = lock_check(&target_pid);
         if !lca {
             println!("TPM tampered with; ID of {} was found", lcb);
@@ -49,6 +60,7 @@ fn main() {
                 println!("Lock file created.") // to log
             }
         }
+
         
     }
     match fs::remove_file(&lock_path) {
