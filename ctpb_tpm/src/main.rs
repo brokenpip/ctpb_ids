@@ -11,41 +11,45 @@ fn main() {
     let debug = false;
     let target_pid = process::id();
     let lock_path = format!("/tmp/tpm/{}",target_pid.to_string());
-    println!("{}",lock_path.to_string());
+    println!("{}",lock_path.to_string()); //debug use
 
-    let lock_name = directory_read("/tmp/tpm").unwrap_or_else(|| "aa".to_string());
-    let lock_pid: u32 = lock_name.parse().unwrap_or(0);
+    // 1 - see if any remnants exist
+    let (lca, lcb) = lock_check(&target_pid);
 
-    println!("{}",debug);
-    if lock_pid == 0 {
+    if !lca {
+        println!("Previous shutdown improper!! ID of {} was found", lcb);
+    } else {
         let _ = File::create(&lock_path);
         if file_check(&lock_name) {
-            println!("File created.")
+            println!("Lock file created.") // to log
         }
-        let lock_name = directory_read("/tmp/tpm").unwrap_or_else(|| "aa".to_string());
-        let lock_pid: u32 = lock_name.parse().unwrap_or(0);
-        if lock_pid == target_pid {
-            println!("GOOD!");
-        } else {
-            println!("Nothing generated, error.");
-            
-        }
-    } else if lock_pid != target_pid {
-        println!("Previous shutdown improper!!");
-        exit(11);
-    } 
+    }
+    println!("{}",debug);
+
     
     let num_iterations = 10;
     let mut i= 0;
     //let _ = File::create(&lock_path);
 
     loop {
-    
+        
         thread::sleep(tick);
         if i >= num_iterations {
             break;
         }
         i += 1;
+        let (lca, lcb) = lock_check(&target_pid);
+        if !lca {
+            println!("TPM tampered with; ID of {} was found", lcb);
+        }
+        if lca & lcb == 0 {
+            println!("TPM tampered with; lock_file deleted");
+            let _ = File::create(&lock_path);
+            if file_check(&lock_name) {
+                println!("Lock file created.") // to log
+            }
+        }
+        
     }
     match fs::remove_file(&lock_path) {
         Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
@@ -62,6 +66,19 @@ fn main() {
 5. chain changes are entered into another file for encrypted storage (start as unencrypted)
 6. 
 */
+
+fn lock_check(target_pid: &u32) -> (bool, u32) {
+    let lock_name = directory_read("/tmp/tpm").unwrap_or_else(|| "aa".to_string());
+    let lock_pid: u32 = lock_name.parse().unwrap_or(0);
+    if lock_pid == 0 {
+        (true, 0)
+    } else if lock_pid == *target_pid {
+        (true, target_pid)
+    } else {
+        (false, lock_pid)
+    }
+    false
+}
 
 fn file_check(path: &str) -> bool {
     Path::new(path).exists()
