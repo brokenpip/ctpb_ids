@@ -1,7 +1,7 @@
 use core::time;
 use std::{fs, thread};
 use std::path::Path;
-use std::process::{self, exit};
+use std::process::{self};
 use std::fs::File;
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
         println!("Previous shutdown improper!! ID of {} was found", lcb);
     } else {
         let _ = File::create(&lock_path);
-        if file_check(&lock_name) {
+        if file_check(&lock_path) {
             println!("Lock file created.") // to log
         }
     }
@@ -52,11 +52,16 @@ fn main() {
         let (lca, lcb) = lock_check(&target_pid);
         if !lca {
             println!("TPM tampered with; ID of {} was found", lcb);
+            let trouble_path = format!("/tmp/tpm/{}",lcb.to_string());
+            match fs::remove_file(&trouble_path) {
+                Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
+                Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
+            }
         }
-        if lca & lcb == 0 {
+        if lca && lcb == 0 {
             println!("TPM tampered with; lock_file deleted");
             let _ = File::create(&lock_path);
-            if file_check(&lock_name) {
+            if file_check(&lock_path) {
                 println!("Lock file created.") // to log
             }
         }
@@ -83,13 +88,12 @@ fn lock_check(target_pid: &u32) -> (bool, u32) {
     let lock_name = directory_read("/tmp/tpm").unwrap_or_else(|| "aa".to_string());
     let lock_pid: u32 = lock_name.parse().unwrap_or(0);
     if lock_pid == 0 {
-        (true, 0)
+        return (true, 0);
     } else if lock_pid == *target_pid {
-        (true, target_pid)
+        return (true, *target_pid);
     } else {
-        (false, lock_pid)
+        return (false, lock_pid);
     }
-    false
 }
 
 fn file_check(path: &str) -> bool {
