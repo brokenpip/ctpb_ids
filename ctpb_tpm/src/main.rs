@@ -2,8 +2,8 @@ use core::time;
 use std::{fs, thread};
 use std::path::Path;
 use std::process::{self, Command};
-use std::fs::File;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
+use std::os::unix::fs::PermissionsExt; // Import for setting permissions
 use std::os::unix::io::AsRawFd;
 use nix::fcntl::{fcntl, FcntlArg};
 use nix::libc::{SEEK_SET as libc_seek_set, flock as libc_flock};
@@ -26,86 +26,97 @@ fn main() {
     if !lca {
         println!("Previous shutdown improper!! ID of {} was found", lcb);
     } else {
-        let _ = File::create(&lock_path); 
-        // Create the lock file if it does not exist
-        if file_check(&lock_path) {
-            println!("Lock file created.");
-            let file_to_lock = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&lock_path);
+        let file = match File::create(&lock_path) {
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("Error creating file '{}': {}", &lock_path, e);
+                return;
+            },
+        };
 
-            if let Ok(file) = file_to_lock {
-                println!("Lockign file.");
-                let filedd = file.as_raw_fd();
+        // Set the Set-GID bit (we use 0o2000 for the Set-GID bit)
+        let mut perms = fs::metadata(&lock_path).expect("Unable to read file metadata").permissions();
+        perms.set_mode(perms.mode() | 0o2000); // Add the Set-GID bit
+        if let Err(e) = fs::set_permissions(&lock_path, perms) {
+            eprintln!("Error setting permissions on file '{}': {}", &lock_path, e);
+            return;
+        }
 
-                let w_lock = libc_flock {
-                    l_type: F_WRLCK,
-                    l_whence: SEEK_SET,
-                    l_start: 0,
-                    l_len: 0,
-                    l_pid: 0,
-                };
-                
+        println!("Lock file created and permissions set.");
 
-                match fcntl(filedd, FcntlArg::F_SETLK(&w_lock)) {
-                    Ok(_) => {
-                        println!("Write lock acquired");
-                        // establish link to IDS
+        let file_to_lock = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&lock_path);
 
-                        // set for future use
+        if let Ok(file) = file_to_lock {
+            println!("Locking file.");
+            let filedd = file.as_raw_fd();
 
-                        // confirm hash of IDS code
-                        let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
+            let w_lock = libc_flock {
+                l_type: F_WRLCK,
+                l_whence: SEEK_SET,
+                l_start: 0,
+                l_len: 0,
+                l_pid: 0,
+            };
 
-                        let (bbo, exec_hash) = genhash(&ids_path);
-                        if bbo {
-                            println!("Hash: {}", exec_hash);
+            // Use F_SETLK to acquire a lock
+            match fcntl(filedd, FcntlArg::F_SETLK(&w_lock)) {
+                Ok(_) => {
+                    println!("Write lock acquired");
+                    // establish link to IDS
+
+                    // set for future use
+
+                    // confirm hash of IDS code
+                    let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
+
+                    let (bbo, exec_hash) = genhash(&ids_path);
+                    if bbo {
+                        println!("Hash: {}", exec_hash);
+                    }
+
+                    // create encrypted log file and stream changes to normal and enc variant 
+                    // NEED log file code from IDS
+                    
+                    let num_iterations = 100;
+                    let mut i = 0;
+
+                    loop {
+                        // rate limiter
+                        thread::sleep(tick);
+                        if i >= num_iterations {
+                            break;
                         }
+                        i += 1;
 
-                        // create encrypted log file and stream changes to normal and enc variant 
-                        // NEED log file code from IDS
-                        
-                        let num_iterations = 100;
-                        let mut i = 0;
-
-                        loop {
-                            // rate limiter
-                            thread::sleep(tick);
-                            if i >= num_iterations {
-                                break;
+                        // self-check
+                        let (lca, lcb) = lock_check(&target_pid);
+                        if !lca {
+                            println!("TPM tampered with; ID of {} was found", lcb);
+                            let trouble_path = format!("/tmp/tpm/{}", lcb.to_string());
+                            match fs::remove_file(&trouble_path) {
+                                Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
+                                Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
                             }
-                            i += 1;
-
-                            // self-check
-                            let (lca, lcb) = lock_check(&target_pid);
-                            if !lca {
-                                println!("TPM tampered with; ID of {} was found", lcb);
-                                let trouble_path = format!("/tmp/tpm/{}", lcb.to_string());
-                                match fs::remove_file(&trouble_path) {
-                                    Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
-                                    Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
-                                }
-                            }
-                            if lca && lcb == 0 {
-                                println!("TPM tampered with; lock_file deleted");
-                                let _ = File::create(&lock_path); // ignore result
-                                if file_check(&lock_path) {
-                                    println!("Lock file created.") // to log
-                                }
+                        }
+                        if lca && lcb == 0 {
+                            println!("TPM tampered with; lock_file deleted");
+                            let _ = File::create(&lock_path); // ignore result
+                            if file_check(&lock_path) {
+                                println!("Lock file created.") // to log
                             }
                         }
                     }
-                    Err(e) => eprintln!("Error acquiring write lock: {}", e),
                 }
-            } else {
-                eprintln!("Error opening file for locking");
+                Err(e) => eprintln!("Error acquiring write lock: {}", e),
             }
+        } else {
+            eprintln!("Error opening file for locking");
         }
     }
     println!("{}", debug);
-
-    
 
     match fs::remove_file(&lock_path) {
         Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
