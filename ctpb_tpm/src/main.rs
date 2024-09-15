@@ -3,6 +3,8 @@ use std::{fs, thread};
 use std::path::Path;
 use std::process::{self};
 use std::fs::File;
+use std::process::Command;
+//use hashdir::HashDir;
 
 fn main() {
     println!("Hello, world!");
@@ -28,14 +30,19 @@ fn main() {
 
     //establish link to IDS
 
-
+    // set for future use
     
     //confirm hash of IDS code
+   
+    let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
 
-    ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm";
+    let (bbo, exec_hash) = genhash(&ids_path);
+    if bbo {
+        println!("Hash: {}", exec_hash);
+    }
 
     //create encrypted log file and stream changes to normal and enc variant 
-
+    // NEED log file code from IDS
     
     let num_iterations = 10;
     let mut i= 0;
