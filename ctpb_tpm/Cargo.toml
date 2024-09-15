@@ -4,5 +4,3 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hashdir = "0.2"
-nix = { version = "0.26", features = ["fs"] }
