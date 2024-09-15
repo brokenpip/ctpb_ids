@@ -3,6 +3,24 @@ use std::{fs, thread};
 use std::path::Path;
 use std::process::{self};
 use std::fs::File;
+use std::process::Command;
+//lock file requirements
+use std::fs::OpenOptions;
+use std::os::unix::fs::FileExt;
+use nix::fcntl::{fcntl, FcntlArg, F_SETLK};
+use nix::libc::{c_int, SEEK_SET};
+
+const F_WRLCK: c_int = 1;
+const F_UNLCK: c_int = 2;
+
+struct flock {
+
+    l_type: c_int,
+    l_whence: c_int,
+    l_start: i64,
+    l_len: i64,
+    l_pid: &u32,
+}
 
 fn main() {
     println!("Hello, world!");
@@ -21,21 +39,44 @@ fn main() {
     } else {
         let _ = File::create(&lock_path);
         if file_check(&lock_path) {
-            println!("Lock file created.") // to log
+            println!("Lock file created."); // to log
+
+            let file_to_lock = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&lock_path);
+            let filedd = file_to_lock.as_raw_fd();
+
+            let w_lock = flock {
+                l_type: F_WRLCK,
+                l_whence: SEEK_SET,
+                l_start: 0,
+                l_len: 0,
+                l_pid: &target_pid,
+            };
+            match fcntl(filedd, FcntlArg::F_SETLK(&w_lock)) {
+                Ok(_) => { println!("Write lock acquired");}
+                Err(e) => { eprintln!("Error occuring write lock: {}", e)}
+            }
         }
     }
     println!("{}",debug);
 
     //establish link to IDS
 
-
+    // set for future use
     
     //confirm hash of IDS code
+   
+    let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
 
-    ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm";
+    let (bbo, exec_hash) = genhash(&ids_path);
+    if bbo {
+        println!("Hash: {}", exec_hash);
+    }
 
     //create encrypted log file and stream changes to normal and enc variant 
-
+    // NEED log file code from IDS
     
     let num_iterations = 10;
     let mut i= 0;
