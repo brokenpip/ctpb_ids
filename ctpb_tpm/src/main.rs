@@ -28,9 +28,7 @@ fn main() {
     }
     println!("{}",debug);
 
-    //establish link to IDS
-
-    // set for future use
+ 
     
     //confirm hash of IDS code
    
@@ -46,7 +44,7 @@ fn main() {
     
     let num_iterations = 10;
     let mut i= 0;
-    //let _ = File::create(&lock_path);
+
 
     loop {
         //rate limiter
