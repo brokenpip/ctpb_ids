@@ -26,14 +26,17 @@ fn main() {
     if !lca {
         println!("Previous shutdown improper!! ID of {} was found", lcb);
     } else {
+        let _ = File::create(&lock_path); 
         // Create the lock file if it does not exist
         if file_check(&lock_path) {
+            println!("Lock file created.");
             let file_to_lock = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .open(&lock_path);
 
             if let Ok(file) = file_to_lock {
+                println!("Lockign file.");
                 let filedd = file.as_raw_fd();
 
                 let w_lock = libc_flock {
@@ -46,63 +49,63 @@ fn main() {
                 
 
                 match fcntl(filedd, FcntlArg::F_SETLK(&w_lock)) {
-                    Ok(_) => println!("Write lock acquired"),
+                    Ok(_) => {
+                        println!("Write lock acquired");
+                        // establish link to IDS
+
+                        // set for future use
+
+                        // confirm hash of IDS code
+                        let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
+
+                        let (bbo, exec_hash) = genhash(&ids_path);
+                        if bbo {
+                            println!("Hash: {}", exec_hash);
+                        }
+
+                        // create encrypted log file and stream changes to normal and enc variant 
+                        // NEED log file code from IDS
+                        
+                        let num_iterations = 100;
+                        let mut i = 0;
+
+                        loop {
+                            // rate limiter
+                            thread::sleep(tick);
+                            if i >= num_iterations {
+                                break;
+                            }
+                            i += 1;
+
+                            // self-check
+                            let (lca, lcb) = lock_check(&target_pid);
+                            if !lca {
+                                println!("TPM tampered with; ID of {} was found", lcb);
+                                let trouble_path = format!("/tmp/tpm/{}", lcb.to_string());
+                                match fs::remove_file(&trouble_path) {
+                                    Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
+                                    Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
+                                }
+                            }
+                            if lca && lcb == 0 {
+                                println!("TPM tampered with; lock_file deleted");
+                                let _ = File::create(&lock_path); // ignore result
+                                if file_check(&lock_path) {
+                                    println!("Lock file created.") // to log
+                                }
+                            }
+                        }
+                    }
                     Err(e) => eprintln!("Error acquiring write lock: {}", e),
                 }
             } else {
                 eprintln!("Error opening file for locking");
             }
-        } else {
-            let _ = File::create(&lock_path); // ignore result
-            println!("Lock file created."); // to log
         }
     }
     println!("{}", debug);
 
-    // establish link to IDS
-
-    // set for future use
-
-    // confirm hash of IDS code
-    let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
-
-    let (bbo, exec_hash) = genhash(&ids_path);
-    if bbo {
-        println!("Hash: {}", exec_hash);
-    }
-
-    // create encrypted log file and stream changes to normal and enc variant 
-    // NEED log file code from IDS
     
-    let num_iterations = 100;
-    let mut i = 0;
-
-    loop {
-        // rate limiter
-        thread::sleep(tick);
-        if i >= num_iterations {
-            break;
-        }
-        i += 1;
-
-        // self-check
-        let (lca, lcb) = lock_check(&target_pid);
-        if !lca {
-            println!("TPM tampered with; ID of {} was found", lcb);
-            let trouble_path = format!("/tmp/tpm/{}", lcb.to_string());
-            match fs::remove_file(&trouble_path) {
-                Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
-                Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
-            }
-        }
-        if lca && lcb == 0 {
-            println!("TPM tampered with; lock_file deleted");
-            let _ = File::create(&lock_path); // ignore result
-            if file_check(&lock_path) {
-                println!("Lock file created.") // to log
-            }
-        }
-    }
 
     match fs::remove_file(&lock_path) {
         Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
