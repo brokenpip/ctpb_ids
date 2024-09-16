@@ -13,7 +13,7 @@ fn main() {
     let tick = time::Duration::from_millis(1000);
     let debug = false;
     let target_pid = process::id();
-    let lock_path = format!("/tmp/tpm/{}",target_pid.to_string());
+    let lock_path = format!("/var/chromia/tpm/{}",target_pid.to_string());
     println!("{}",lock_path.to_string()); //debug use
 
     // 1 - see if any remnants exist
@@ -68,7 +68,7 @@ fn main() {
         let (lca, lcb) = lock_check(&target_pid);
         if !lca {
             println!("TPM tampered with; ID of {} was found", lcb);
-            let trouble_path = format!("/tmp/tpm/{}",lcb.to_string());
+            let trouble_path = format!("/var/chromia/tpm/{}",lcb.to_string());
             match fs::remove_file(&trouble_path) {
                 Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
                 Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
@@ -104,7 +104,7 @@ fn main() {
 */
 
 fn lock_check(target_pid: &u32) -> (bool, u32) {
-    let lock_name = directory_read("/tmp/tpm").unwrap_or_else(|| "aa".to_string());
+    let lock_name = directory_read("/var/chromia/tpm").unwrap_or_else(|| "aa".to_string());
     let lock_pid: u32 = lock_name.parse().unwrap_or(0);
     if lock_pid == 0 {
         return (true, 0);
