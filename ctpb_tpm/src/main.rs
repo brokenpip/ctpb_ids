@@ -2,9 +2,10 @@ use core::time;
 use std::{fs, thread};
 use std::path::Path;
 use std::process::{self};
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::process::Command;
-//use hashdir::HashDir;
+use std::io::Write;
+
 
 fn main() {
     println!("Hello, world!");
@@ -28,9 +29,18 @@ fn main() {
     }
     println!("{}",debug);
 
+    let tpm_folder_p = "/var/chromia/tpm";
+    let fpath = Path::new(tpm_folder_p);
+    if !fpath.exists() {
+        // Create the folder
+        let _ = fs::create_dir(fpath);
+        println!("Folder created successfully!");
+    } else {
+        println!("Folder already exists.");
+    }
  
     
-    //confirm hash of IDS code
+    // confirm hash of IDS code
    
     let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
 
@@ -39,7 +49,7 @@ fn main() {
         println!("Hash: {}", exec_hash);
     }
 
-    //create encrypted log file and stream changes to normal and enc variant 
+    // create encrypted log file and stream changes to normal and enc variant 
     // NEED log file code from IDS
     
     let num_iterations = 10;
@@ -75,7 +85,10 @@ fn main() {
         
     }
     match fs::remove_file(&lock_path) {
-        Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
+        Ok(_) => {
+            let logi = format!("File '{}' deleted successfully.", lock_path);
+            let _ = append_to_log(&logi);
+        }
         Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
     }
 }
@@ -146,4 +159,15 @@ fn genhash(key: &str) -> (bool, String) {
     }
 
     (true, stdout_str)
+}
+
+fn append_to_log(message: &str) -> std::io::Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true)  // This will create the file if it doesn't exist
+        .open("TPM.log")?;
+
+    writeln!(file, "{}", message)?;  // Write the message and append a newline
+    Ok(())
 }
