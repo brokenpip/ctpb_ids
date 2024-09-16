@@ -9,6 +9,27 @@ use std::io::Write;
 
 fn main() {
     println!("Hello, world!");
+    let tpm_folder_a = "/var/chromia";
+    let tpm_folder_p = "/var/chromia/tpm";
+    let fpath = Path::new(tpm_folder_a);
+    if !fpath.exists() {
+        // Create the folder
+        match fs::create_dir(fpath) {
+            Ok(_) => {
+                println!("Directory created successfully.");
+                let fpath2 = Path::new(tpm_folder_p);
+                match fs::create_dir(fpath2) {
+                    Ok(_) => {
+                        println!("Directory created successfully.");
+                    }
+                    Err(e) => eprintln!("Failed to create directory: {}", e),
+                }
+            }
+            Err(e) => eprintln!("Failed to create directory: {}", e),
+        }
+    } else {
+        println!("Folder already exists.");
+    }
 
     let tick = time::Duration::from_millis(1000);
     let debug = false;
@@ -29,26 +50,21 @@ fn main() {
     }
     println!("{}",debug);
 
-    let tpm_folder_p = "/var/chromia/tpm";
-    let fpath = Path::new(tpm_folder_p);
-    if !fpath.exists() {
-        // Create the folder
-        match fs::create_dir(fpath) {
-            Ok(_) => println!("Directory created successfully."),
-            Err(e) => eprintln!("Failed to create directory: {}", e),
-        }
-    } else {
-        println!("Folder already exists.");
-    }
+    
  
     
     // confirm hash of IDS code
    
-    let ids_path = "/home/ids/Documents/GitHub/ctpb_ids/ctpb_tpm/Cargo.toml";
+    let ids_path = "/bin/chromia.lps";
 
     let (bbo, exec_hash) = genhash(&ids_path);
     if bbo {
-        println!("Hash: {}", exec_hash);
+        println!("Hash: '{}'", exec_hash.trim());
+        if exec_hash.trim() == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262".to_string() {
+            println!("No tamper found for IDS.");
+        } else {
+            println!("Hash for IDS not matching.");
+        }
     }
 
     // create encrypted log file and stream changes to normal and enc variant 
@@ -139,7 +155,7 @@ fn directory_read(path: &str) -> Option<String> {
 }
 
 fn genhash(key: &str) -> (bool, String) {
-    let output = match Command::new("b3sum")
+    let output = match Command::new("./b3sum")
         .arg(key)
         .arg("--no-names")
         .output() {
