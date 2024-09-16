@@ -33,8 +33,10 @@ fn main() {
     let fpath = Path::new(tpm_folder_p);
     if !fpath.exists() {
         // Create the folder
-        let _ = fs::create_dir(fpath);
-        println!("Folder created successfully!");
+        match fs::create_dir(fpath) {
+            Ok(_) => println!("Directory created successfully."),
+            Err(e) => eprintln!("Failed to create directory: {}", e),
+        }
     } else {
         println!("Folder already exists.");
     }
