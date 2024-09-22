@@ -5,6 +5,7 @@ use std::process::{self};
 use std::fs::{File, OpenOptions};
 use std::process::Command;
 use std::io::Write;
+use std::str;
 
 
 fn main() {
@@ -124,12 +125,14 @@ fn main() {
         
 
         //ids check
-        let fpid = match find_single_pid_by_command("./ctpb_ids") {
-            Ok(pid) => pid,
-            Err(e) => eprintln!("Error: {}", e),
-        }
+        let fpid = find_single_pid_by_command("target/debug/emulate");
         if fpid != 0 {
-            let (lcc, lcd) = ids_check(&fpid);
+            let lcc = ids_check(&fpid);
+            if lcc {
+                println!("IDS as expected.")
+            } else {
+                println!("IDS not as expected. Taking action...")
+            }
         }
 
         
@@ -165,30 +168,36 @@ fn lock_check(target_pid: &u32) -> (bool, u32) {
     }
 }
 
-fn ids_check(target_pid: &u32) -> (bool) {
+fn ids_check(target_pid: &u32) -> bool {
     let lock_name = directory_read("/var/chromia/ids").unwrap_or_else(|| "aa".to_string());
     let lock_pid: u32 = lock_name.parse().unwrap_or(0);
 
-    let (bbo, pid_result) = match_pid(lock_pid.to_string())
+    let (bbo, pid_result) = match_pid(&lock_pid.to_string());
     println!("match pid result DEBUG ONLY was {}", &pid_result);
-    if bbo && pid_result == "./ctpb_ids" {
+    if bbo && pid_result == "./emulate" {
         if lock_pid == *target_pid {
             return true;
         } else {
             println!("Found process from lock folder but did not match target.");
-            false;
+            return false;
         }
     } else {
         println!("No process match from lock folder, target PID was {}", &target_pid);
-        false;
+        return false;
     }
 }
 
 fn match_pid(key: &str) -> (bool, String) {
-    let output = match Command::new("ps ")
+    if !key.chars().all(char::is_numeric) {
+        println!("Invalid PID: '{}'", key);
+        return (false, String::new());
+    }
+
+    let output = match Command::new("ps")
         .arg("-q")
         .arg(key)
-        .arg("-o cmd=")
+        .arg("-o")
+        .arg("cmd=")
         .output() {
         
         Ok(output) => output,
@@ -210,25 +219,32 @@ fn match_pid(key: &str) -> (bool, String) {
     (true, stdout_str)
 }
 
-fn find_single_pid_by_command(cmd: &str) -> Result<i32, Box<dyn std::error::Error>> {
+
+fn find_single_pid_by_command(cmd: &str) -> u32 {
     let output = Command::new("pgrep")
         .arg("-f") // Match against the full command line
         .arg(cmd)
-        .output()?;
+        .output();
+
+    // Use match to handle the Result without terminating
+    let output = match output {
+        Ok(output) => output,
+        Err(_) => return 0, // Return 0 if the command fails
+    };
 
     if !output.status.success() {
-        return Ok(0); // Return 0 if pgrep fails
+        return 0; // Return 0 if pgrep fails
     }
 
-    let pids_str = str::from_utf8(&output.stdout)?;
+    let pids_str = str::from_utf8(&output.stdout).unwrap_or("");
     let pids: Vec<i32> = pids_str
         .lines()
         .filter_map(|line| line.trim().parse().ok())
         .collect();
 
     match pids.len() {
-        1 => Ok(pids[0]), // Return the single PID found
-        _ => Ok(0),       // Return 0 for 0 or more than 1 match
+        1 => pids[0] as u32, // Return the single PID found as u32
+        _ => 0,              // Return 0 for 0 or more than 1 match
     }
 }
 
