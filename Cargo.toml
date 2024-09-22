@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "ctpb_ids/ctpb_tpm",  # Adjust the names to match your actual subfolder names
+    "ctpb_ids/emulate",
+]
