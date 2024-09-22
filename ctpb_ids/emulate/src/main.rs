@@ -29,6 +29,26 @@ fn main() {
         }
     } else {
         println!("Folder already exists.");
+        let fpath = Path::new(tpm_folder_p);
+        if !fpath.exists() {
+            // Create the folder
+            match fs::create_dir(fpath) {
+                Ok(_) => {
+                    println!("Directory created successfully.");
+                    let fpath2 = Path::new(tpm_folder_p);
+                    match fs::create_dir(fpath2) {
+                        Ok(_) => {
+                            println!("Directory created successfully.");
+                        }
+                        Err(e) => eprintln!("Failed to create directory: {}", e),
+                    }
+                }
+                Err(e) => eprintln!("Failed to create directory: {}", e),
+            }
+        } else {
+            println!("Folder already exists.");
+            
+        }
     }
 
     let tick = time::Duration::from_millis(1000);

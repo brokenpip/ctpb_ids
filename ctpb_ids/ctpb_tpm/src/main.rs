@@ -29,6 +29,26 @@ fn main() {
         }
     } else {
         println!("Folder already exists.");
+        let fpath = Path::new(tpm_folder_p);
+        if !fpath.exists() {
+            // Create the folder
+            match fs::create_dir(fpath) {
+                Ok(_) => {
+                    println!("Directory created successfully.");
+                    let fpath2 = Path::new(tpm_folder_p);
+                    match fs::create_dir(fpath2) {
+                        Ok(_) => {
+                            println!("Directory created successfully.");
+                        }
+                        Err(e) => eprintln!("Failed to create directory: {}", e),
+                    }
+                }
+                Err(e) => eprintln!("Failed to create directory: {}", e),
+            }
+        } else {
+            println!("Folder already exists.");
+            
+        }
     }
 
     let tick = time::Duration::from_millis(1000);
@@ -100,6 +120,18 @@ fn main() {
             }
         }
 
+        //get IDS PID
+        
+
+        //ids check
+        let fpid = match find_single_pid_by_command("./ctpb_ids") {
+            Ok(pid) => pid,
+            Err(e) => eprintln!("Error: {}", e),
+        }
+        if fpid != 0 {
+            let (lcc, lcd) = ids_check(&fpid);
+        }
+
         
     }
     match fs::remove_file(&lock_path) {
@@ -130,6 +162,73 @@ fn lock_check(target_pid: &u32) -> (bool, u32) {
         return (true, *target_pid);
     } else {
         return (false, lock_pid);
+    }
+}
+
+fn ids_check(target_pid: &u32) -> (bool) {
+    let lock_name = directory_read("/var/chromia/ids").unwrap_or_else(|| "aa".to_string());
+    let lock_pid: u32 = lock_name.parse().unwrap_or(0);
+
+    let (bbo, pid_result) = match_pid(lock_pid.to_string())
+    println!("match pid result DEBUG ONLY was {}", &pid_result);
+    if bbo && pid_result == "./ctpb_ids" {
+        if lock_pid == *target_pid {
+            return true;
+        } else {
+            println!("Found process from lock folder but did not match target.");
+            false;
+        }
+    } else {
+        println!("No process match from lock folder, target PID was {}", &target_pid);
+        false;
+    }
+}
+
+fn match_pid(key: &str) -> (bool, String) {
+    let output = match Command::new("ps ")
+        .arg("-q")
+        .arg(key)
+        .arg("-o cmd=")
+        .output() {
+        
+        Ok(output) => output,
+        Err(err) => {
+            eprintln!("Failed to execute command for key '{}': {}", key, err);
+            return (false, String::new());
+        }
+    };
+    // Convert output to string
+    let stdout_str = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr_str = String::from_utf8_lossy(&output.stderr).into_owned();
+    
+    //println!("{}", stdout_str);
+
+    if !stderr_str.is_empty() {
+        eprintln!("stderr for key '{}': {}", key, stderr_str);
+    }
+
+    (true, stdout_str)
+}
+
+fn find_single_pid_by_command(cmd: &str) -> Result<i32, Box<dyn std::error::Error>> {
+    let output = Command::new("pgrep")
+        .arg("-f") // Match against the full command line
+        .arg(cmd)
+        .output()?;
+
+    if !output.status.success() {
+        return Ok(0); // Return 0 if pgrep fails
+    }
+
+    let pids_str = str::from_utf8(&output.stdout)?;
+    let pids: Vec<i32> = pids_str
+        .lines()
+        .filter_map(|line| line.trim().parse().ok())
+        .collect();
+
+    match pids.len() {
+        1 => Ok(pids[0]), // Return the single PID found
+        _ => Ok(0),       // Return 0 for 0 or more than 1 match
     }
 }
 
