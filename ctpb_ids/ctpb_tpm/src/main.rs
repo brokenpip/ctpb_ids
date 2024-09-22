@@ -3,7 +3,7 @@ use std::{fs, thread};
 use std::path::Path;
 use std::process::{self};
 use std::fs::{File, OpenOptions};
-use std::process::Command;
+use std::process::{Command,Stdio};
 use std::io::Write;
 use std::str;
 
@@ -125,14 +125,18 @@ fn main() {
         
 
         //ids check
-        let fpid = find_single_pid_by_command("target/debug/emulate");
+        let fpid = find_single_pid_by_command("./emulate");
+        //println!("fpid was {}", &fpid);
         if fpid != 0 {
             let lcc = ids_check(&fpid);
             if lcc {
-                println!("IDS as expected.")
+                //println!("IDS as expected.") //debug
             } else {
-                println!("IDS not as expected. Taking action...")
+                println!("IDS not as expected. Suspected impersonation!!")
             }
+        } else {
+            println!("IDS not found, starting IDS");
+            //Code to start IDS program; need either systemd linkage or path to binary
         }
 
         
@@ -173,8 +177,11 @@ fn ids_check(target_pid: &u32) -> bool {
     let lock_pid: u32 = lock_name.parse().unwrap_or(0);
 
     let (bbo, pid_result) = match_pid(&lock_pid.to_string());
-    println!("match pid result DEBUG ONLY was {}", &pid_result);
-    if bbo && pid_result == "./emulate" {
+    //println!("match pid result DEBUG ONLY was {}{}", bbo,&pid_result.trim());
+    /*if pid_result.trim() == "./emulate" {
+        println!("trueay");
+    } */
+    if bbo && pid_result.trim() == "./emulate" {
         if lock_pid == *target_pid {
             return true;
         } else {
@@ -209,7 +216,7 @@ fn match_pid(key: &str) -> (bool, String) {
     // Convert output to string
     let stdout_str = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr_str = String::from_utf8_lossy(&output.stderr).into_owned();
-    
+    //println!("mpid out was {}", &stdout_str);
     //println!("{}", stdout_str);
 
     if !stderr_str.is_empty() {
@@ -221,31 +228,26 @@ fn match_pid(key: &str) -> (bool, String) {
 
 
 fn find_single_pid_by_command(cmd: &str) -> u32 {
-    let output = Command::new("pgrep")
-        .arg("-f") // Match against the full command line
-        .arg(cmd)
-        .output();
+    
+    let pgrep_output = Command::new("pgrep")
+    .arg("-f") // Match against the full command line
+    .arg(cmd)
+    .stdout(Stdio::piped()) // Pipe the output
+    .output(); // Capture the output
 
     // Use match to handle the Result without terminating
-    let output = match output {
+    let pgrep_output = match pgrep_output {
         Ok(output) => output,
         Err(_) => return 0, // Return 0 if the command fails
     };
 
-    if !output.status.success() {
-        return 0; // Return 0 if pgrep fails
-    }
+    // Create a longer-lived variable for the output
+    let output_str = String::from_utf8_lossy(&pgrep_output.stdout);
+    let last_line = output_str.lines().last().unwrap_or(""); // Handle case with no output
+    //println!("{:?}", &last_line);
 
-    let pids_str = str::from_utf8(&output.stdout).unwrap_or("");
-    let pids: Vec<i32> = pids_str
-        .lines()
-        .filter_map(|line| line.trim().parse().ok())
-        .collect();
-
-    match pids.len() {
-        1 => pids[0] as u32, // Return the single PID found as u32
-        _ => 0,              // Return 0 for 0 or more than 1 match
-    }
+    // Attempt to parse and return the PID, returning 0 on failure
+    last_line.trim().parse::<u32>().unwrap_or(0)
 }
 
 fn file_check(path: &str) -> bool {

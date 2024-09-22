@@ -6,7 +6,6 @@ use std::fs::{File, OpenOptions};
 use std::process::Command;
 use std::io::Write;
 
-
 fn main() {
     println!("Hello, world!");
     let tpm_folder_a = "/var/chromia";
