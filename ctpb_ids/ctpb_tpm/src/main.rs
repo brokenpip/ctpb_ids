@@ -132,7 +132,8 @@ fn main() {
             if lcc {
                 //println!("IDS as expected.") //debug
             } else {
-                println!("IDS not as expected. Suspected impersonation!!")
+                println!("IDS not as expected. Suspected impersonation!!");
+                let _ = append_to_log("IDS not as expected. Suspected impersonation!!");
             }
         } else {
             println!("IDS not found, starting IDS");
