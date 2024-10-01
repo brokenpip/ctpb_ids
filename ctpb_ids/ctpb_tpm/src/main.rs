@@ -10,8 +10,10 @@ use std::str;
 
 fn main() {
     println!("Hello, world!");
+    
     let tpm_folder_a = "/var/chromia";
     let tpm_folder_p = "/var/chromia/tpm";
+    let _ = append_to_log(&tpm_folder_a);
     let fpath = Path::new(tpm_folder_a);
     if !fpath.exists() {
         // Create the folder
@@ -76,12 +78,12 @@ fn main() {
     
     // confirm hash of IDS code
    
-    let ids_path = "/bin/chromia.lps";
+    let ids_path = "/etc/Chromia/config.ini";
 
     let (bbo, exec_hash) = genhash(&ids_path);
     if bbo {
         println!("Hash: '{}'", exec_hash.trim());
-        if exec_hash.trim() == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262".to_string() {
+        if exec_hash.trim() == "a7029d961e672a40c176eca62c49eb40506325897ab4920d7eb0e26e7f7e057f".to_string() {
             println!("No tamper found for IDS.");
         } else {
             println!("Hash for IDS not matching.");
@@ -273,7 +275,7 @@ fn directory_read(path: &str) -> Option<String> {
 }
 
 fn genhash(key: &str) -> (bool, String) {
-    let output = match Command::new("./b3sum")
+    let output = match Command::new("/bin/Chromia/Data/b3sum")
         .arg(key)
         .arg("--no-names")
         .output() {
@@ -302,7 +304,7 @@ fn append_to_log(message: &str) -> std::io::Result<()> {
         .write(true)
         .append(true)
         .create(true)  // This will create the file if it doesn't exist
-        .open("TPM.log")?;
+        .open("/var/log/TPM.log")?;
 
     writeln!(file, "{}", message)?;  // Write the message and append a newline
     Ok(())
