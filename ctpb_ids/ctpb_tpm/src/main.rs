@@ -304,7 +304,7 @@ fn append_to_log(message: &str) {
         .write(true)
         .append(true)
         .create(true)
-        .open("/etc/var/ironhide.log")
+        .open("/var/log/ironhide.log")
         .map(|mut file| {
             // Try to write the message
             let _ = writeln!(file, "{}", message);
