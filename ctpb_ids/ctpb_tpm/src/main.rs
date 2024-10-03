@@ -17,11 +17,11 @@ fn main() {
         // Create the folder
         match fs::create_dir(fpath) {
             Ok(_) => {
-                println!("Directory created successfully.");
+                append_to_log(&format!("Directory created successfully."));
                 let fpath2 = Path::new(tpm_folder_p);
                 match fs::create_dir(fpath2) {
                     Ok(_) => {
-                        println!("Directory created successfully.");
+                        append_to_log(&format!("Directory created successfully."));
                     }
                     Err(e) => eprintln!("Failed to create directory: {}", e),
                 }
@@ -35,11 +35,11 @@ fn main() {
             // Create the folder
             match fs::create_dir(fpath) {
                 Ok(_) => {
-                    println!("Directory created successfully.");
+                    append_to_log(&format!("Directory created successfully."));
                     let fpath2 = Path::new(tpm_folder_p);
                     match fs::create_dir(fpath2) {
                         Ok(_) => {
-                            println!("Directory created successfully.");
+                            append_to_log(&format!("Directory created successfully."));
                         }
                         Err(e) => eprintln!("Failed to create directory: {}", e),
                     }
@@ -47,7 +47,7 @@ fn main() {
                 Err(e) => eprintln!("Failed to create directory: {}", e),
             }
         } else {
-            println!("Folder already exists.");
+            append_to_log(&format!("Folder already exists."));
             
         }
     }
@@ -56,35 +56,35 @@ fn main() {
     let debug = false;
     let target_pid = process::id();
     let lock_path = format!("/var/chromia/tpm/{}",target_pid.to_string());
-    println!("{}",lock_path.to_string()); //debug use
+    append_to_log(&format!("{}",lock_path.to_string())); //debug use
 
     // 1 - see if any remnants exist
     let (lca, lcb) = lock_check(&target_pid);
 
     if !lca {
-        println!("Previous shutdown improper!! ID of {} was found", lcb);
+        append_to_log(&format!("Previous shutdown improper!! ID of {} was found", lcb));
     } else {
         let _ = File::create(&lock_path);
         if file_check(&lock_path) {
-            println!("Lock file created.") // to log
+            append_to_log(&format!("Lock file created.")) // to log
         }
     }
-    println!("{}",debug);
+    append_to_log(&format!("{}",debug));
 
     
  
     
     // confirm hash of IDS code
    
-    let ids_path = "/bin/chromia.lps";
+    let ids_path = "/bin/Chromia/Chromia";
 
     let (bbo, exec_hash) = genhash(&ids_path);
     if bbo {
         println!("Hash: '{}'", exec_hash.trim());
         if exec_hash.trim() == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262".to_string() {
-            println!("No tamper found for IDS.");
+            append_to_log(&format!("No tamper found for IDS."));
         } else {
-            println!("Hash for IDS not matching.");
+            append_to_log(&format!("Hash for IDS not matching."));
         }
     }
 
@@ -106,18 +106,18 @@ fn main() {
         //self-check
         let (lca, lcb) = lock_check(&target_pid);
         if !lca {
-            println!("TPM tampered with; ID of {} was found", lcb);
+            append_to_log(&format!("TPM tampered with; ID of {} was found", lcb));
             let trouble_path = format!("/var/chromia/tpm/{}",lcb.to_string());
             match fs::remove_file(&trouble_path) {
-                Ok(_) => println!("File '{}' deleted successfully.", &lock_path),
-                Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
+                Ok(_) => append_to_log(&format!("File '{}' deleted successfully.", &lock_path)),
+                Err(e) => append_to_log(&format!("Failed to delete file '{}': {}", &lock_path, e)),
             }
         }
         if lca && lcb == 0 {
-            println!("TPM tampered with; lock_file deleted");
+            append_to_log(&format!("TPM tampered with; lock_file deleted"));
             let _ = File::create(&lock_path);
             if file_check(&lock_path) {
-                println!("Lock file created.") // to log
+                append_to_log(&format!("Lock file created.")); // to log
             }
         }
 
@@ -132,11 +132,10 @@ fn main() {
             if lcc {
                 //println!("IDS as expected.") //debug
             } else {
-                println!("IDS not as expected. Suspected impersonation!!");
-                let _ = append_to_log("IDS not as expected. Suspected impersonation!!");
+                append_to_log(&format!("IDS not as expected. Suspected impersonation!!"));
             }
         } else {
-            println!("IDS not found, starting IDS");
+            append_to_log(&format!("IDS not found, starting IDS"));
             //Code to start IDS program; need either systemd linkage or path to binary
         }
 
@@ -147,7 +146,7 @@ fn main() {
             let logi = format!("File '{}' deleted successfully.", lock_path);
             let _ = append_to_log(&logi);
         }
-        Err(e) => println!("Failed to delete file '{}': {}", &lock_path, e),
+        Err(e) => {append_to_log(&format!("Failed to delete file '{}': {}", &lock_path, e));}
     }
 }
 
@@ -186,11 +185,11 @@ fn ids_check(target_pid: &u32) -> bool {
         if lock_pid == *target_pid {
             return true;
         } else {
-            println!("Found process from lock folder but did not match target.");
+            append_to_log(&format!("Found process from lock folder but did not match target."));
             return false;
         }
     } else {
-        println!("No process match from lock folder, target PID was {}", &target_pid);
+        append_to_log(&format!("No process match from lock folder, target PID was {}", target_pid));
         return false;
     }
 }
@@ -297,13 +296,15 @@ fn genhash(key: &str) -> (bool, String) {
     (true, stdout_str)
 }
 
-fn append_to_log(message: &str) -> std::io::Result<()> {
-    let mut file = OpenOptions::new()
+fn append_to_log(message: &str) {
+    // Try to open the file
+    let _ = OpenOptions::new()
         .write(true)
         .append(true)
-        .create(true)  // This will create the file if it doesn't exist
-        .open("TPM.log")?;
-
-    writeln!(file, "{}", message)?;  // Write the message and append a newline
-    Ok(())
-}
+        .create(true)
+        .open("/etc/var/ironhide.log")
+        .map(|mut file| {
+            // Try to write the message
+            let _ = writeln!(file, "{}", message);
+        });
+    }
