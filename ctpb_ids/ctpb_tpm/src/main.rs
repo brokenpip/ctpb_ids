@@ -10,8 +10,10 @@ use std::str;
 
 fn main() {
     println!("Hello, world!");
+    
     let tpm_folder_a = "/var/chromia";
     let tpm_folder_p = "/var/chromia/tpm";
+    let _ = append_to_log(&tpm_folder_a);
     let fpath = Path::new(tpm_folder_a);
     if !fpath.exists() {
         // Create the folder
@@ -272,7 +274,7 @@ fn directory_read(path: &str) -> Option<String> {
 }
 
 fn genhash(key: &str) -> (bool, String) {
-    let output = match Command::new("./b3sum")
+    let output = match Command::new("/bin/Chromia/Data/b3sum")
         .arg(key)
         .arg("--no-names")
         .output() {
