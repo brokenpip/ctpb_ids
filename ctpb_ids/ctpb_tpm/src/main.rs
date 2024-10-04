@@ -6,6 +6,7 @@ use std::fs::{File, OpenOptions};
 use std::process::{Command,Stdio};
 use std::io::Write;
 use std::str;
+use std::io;
 
 
 fn main() {
@@ -25,10 +26,10 @@ fn main() {
                     Ok(_) => {
                         append_to_log(&format!("Directory created successfully."));
                     }
-                    Err(e) => eprintln!("Failed to create directory: {}", e),
+                    Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
                 }
             }
-            Err(e) => eprintln!("Failed to create directory: {}", e),
+            Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
         }
     } else {
         println!("Folder already exists.");
@@ -43,10 +44,10 @@ fn main() {
                         Ok(_) => {
                             append_to_log(&format!("Directory created successfully."));
                         }
-                        Err(e) => eprintln!("Failed to create directory: {}", e),
+                        Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
                     }
                 }
-                Err(e) => eprintln!("Failed to create directory: {}", e),
+                Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
             }
         } else {
             append_to_log(&format!("Folder already exists."));
@@ -82,7 +83,7 @@ fn main() {
 
     let (bbo, exec_hash) = genhash(&ids_path);
     if bbo {
-        println!("Hash: '{}'", exec_hash.trim());
+        append_to_log(&format!("Hash: '{}'", exec_hash.trim()));
         if exec_hash.trim() == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262".to_string() {
             append_to_log(&format!("No tamper found for IDS."));
         } else {
@@ -139,13 +140,7 @@ fn main() {
         } else {
             append_to_log(&format!("IDS not found, starting IDS"));
             //Code to start IDS program; need either systemd linkage or path to binary
-            let start_ids = Command::new("sudo")
-            .arg("systemctl")
-            .arg("restart")
-            .arg("Chromia")
-            .output();
-
-            prinln!("command response to start IDS is {}",output);
+            let _ = start_ids();
         }
 
         
@@ -168,6 +163,23 @@ fn main() {
 5. chain changes are entered into another file for encrypted storage (start as unencrypted)
 6. 
 */
+
+fn start_ids() -> io::Result<()> {
+    let output = Command::new("sudo")
+        .arg("systemctl")
+        .arg("restart")
+        .arg("Chromia")
+        .output()?;
+
+    if output.status.success() {
+        append_to_log(&format!("IDS started successfully."));
+    } else {
+        let error_message = String::from_utf8_lossy(&output.stderr);
+        append_to_log(&format!("Failed to start IDS: {}", error_message));
+    }
+    
+    Ok(())
+}
 
 fn lock_check(target_pid: &u32) -> (bool, u32) {
     let lock_name = directory_read("/var/chromia/tpm").unwrap_or_else(|| "aa".to_string());
@@ -205,7 +217,7 @@ fn ids_check(target_pid: &u32) -> bool {
 
 fn match_pid(key: &str) -> (bool, String) {
     if !key.chars().all(char::is_numeric) {
-        println!("Invalid PID: '{}'", key);
+        append_to_log(&format!("Invalid PID: '{}'", key));
         return (false, String::new());
     }
 
@@ -218,7 +230,7 @@ fn match_pid(key: &str) -> (bool, String) {
         
         Ok(output) => output,
         Err(err) => {
-            eprintln!("Failed to execute command for key '{}': {}", key, err);
+            append_to_log(&format!("Failed to execute command for key '{}': {}", key, err));
             return (false, String::new());
         }
     };
@@ -229,7 +241,7 @@ fn match_pid(key: &str) -> (bool, String) {
     //println!("{}", stdout_str);
 
     if !stderr_str.is_empty() {
-        eprintln!("stderr for key '{}': {}", key, stderr_str);
+        append_to_log(&format!("stderr for key '{}': {}", key, stderr_str));
     }
 
     (true, stdout_str)
@@ -288,7 +300,7 @@ fn genhash(key: &str) -> (bool, String) {
         
         Ok(output) => output,
         Err(err) => {
-            eprintln!("Failed to execute command for key '{}': {}", key, err);
+            append_to_log(&format!("Failed to execute command for key '{}': {}", key, err));
             return (false, String::new());
         }
     };
@@ -299,7 +311,7 @@ fn genhash(key: &str) -> (bool, String) {
     //println!("{}", stdout_str);
 
     if !stderr_str.is_empty() {
-        eprintln!("stderr for key '{}': {}", key, stderr_str);
+        append_to_log(&format!("stderr for key '{}': {}", key, stderr_str));
     }
 
     (true, stdout_str)
