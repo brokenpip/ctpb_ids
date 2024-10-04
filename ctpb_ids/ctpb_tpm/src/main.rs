@@ -139,6 +139,13 @@ fn main() {
         } else {
             append_to_log(&format!("IDS not found, starting IDS"));
             //Code to start IDS program; need either systemd linkage or path to binary
+            let start_ids = Command::new("sudo")
+            .arg("systemctl")
+            .arg("restart")
+            .arg("Chromia")
+            .output();
+
+            prinln!("command response to start IDS is {}",output);
         }
 
         
@@ -299,8 +306,10 @@ fn genhash(key: &str) -> (bool, String) {
 }
 
 fn append_to_log(message: &str) {
+    println!("{}",&message);
     // Try to open the file
     let _ = OpenOptions::new()
+        
         .write(true)
         .append(true)
         .create(true)
@@ -309,4 +318,4 @@ fn append_to_log(message: &str) {
             // Try to write the message
             let _ = writeln!(file, "{}", message);
         });
-    }
+}
