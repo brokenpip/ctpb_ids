@@ -204,7 +204,7 @@ fn ids_check(target_pid: &u32) -> bool {
     /*if pid_result.trim() == "./emulate" {
         println!("trueay");
     } */
-    if bbo && pid_result.trim() == "./emulate" {
+    if bbo && pid_result.trim() == "Chromia" {
         if lock_pid == *target_pid {
             return true;
         } else {
