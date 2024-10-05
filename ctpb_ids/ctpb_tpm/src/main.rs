@@ -7,6 +7,7 @@ use std::process::{Command,Stdio};
 use std::io::Write;
 use std::str;
 use std::io;
+use std::time::Duration;
 
 
 fn main() {
@@ -84,7 +85,7 @@ fn main() {
     let (bbo, exec_hash) = genhash(&ids_path);
     if bbo {
         append_to_log(&format!("Hash: '{}'", exec_hash.trim()));
-        if exec_hash.trim() == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262".to_string() {
+        if exec_hash.trim() == "80151b0cc10f937dabcda74a68557f32437a59838216b1f3eabe0bd02ef3b4c2".to_string() {
             append_to_log(&format!("No tamper found for IDS."));
         } else {
             append_to_log(&format!("Hash for IDS not matching."));
@@ -141,6 +142,7 @@ fn main() {
             append_to_log(&format!("IDS not found, starting IDS"));
             //Code to start IDS program; need either systemd linkage or path to binary
             let _ = start_ids();
+            thread::sleep(Duration::from_secs(20))
         }
 
         
