@@ -302,7 +302,7 @@ fn genhash(key: &str) -> (bool, String) {
         
         Ok(output) => output,
         Err(err) => {
-            append_to_log(&format!("Failed to execute command for key '{}': {}", key, err));
+            append_to_log(&format!("Failed to hash for key '{}': {}", key, err));
             return (false, String::new());
         }
     };
