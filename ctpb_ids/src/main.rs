@@ -129,8 +129,8 @@ fn main() {
         
 
         //ids check
-        let fpid = find_single_pid_by_command("Chromia");
-        //println!("fpid was {}", &fpid);
+        let fpid = find_single_pid_by_command("Chromia".trim());
+        println!("fpid was {}", &fpid);
         if fpid != 0 {
             let lcc = ids_check(&fpid);
             if lcc {
