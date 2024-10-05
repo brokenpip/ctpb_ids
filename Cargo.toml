@@ -1,7 +1,6 @@
-[workspace]
-resolver = "1"
+[package]
+name = "ctpb_tpm"
+version = "0.1.0"
+edition = "2021"
 
-members = [
-    "ctpb_ids/ctpb_tpm",  # Adjust the names to match your actual subfolder names
-    "ctpb_ids/emulate",
-]
+[dependencies]
