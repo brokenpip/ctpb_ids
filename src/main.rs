@@ -266,11 +266,11 @@ fn find_single_pid_by_command(cmd: &str) -> u32 {
 
     // Create a longer-lived variable for the output
     let output_str = String::from_utf8_lossy(&pgrep_output.stdout);
-    let last_line = output_str.lines().last().unwrap_or(""); // Handle case with no output
+    let first_line = output_str.lines().next().unwrap_or(""); // Handle case with no output
     //println!("{:?}", &last_line);
 
     // Attempt to parse and return the PID, returning 0 on failure
-    last_line.trim().parse::<u32>().unwrap_or(0)
+    first_line.trim().parse::<u32>().unwrap_or(0)
 }
 
 fn file_check(path: &str) -> bool {
