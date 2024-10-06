@@ -29,6 +29,7 @@ fn main() {
     
     let num_iterations = 100;
     let mut i= 0;
+    let mut info_counter = 0;
 
 
     loop {
@@ -43,36 +44,49 @@ fn main() {
         let bintpm_path = "/bin/Chromia/Chromia";
         let (bbo, exec_hash) = genhash(&bintpm_path);
         if bbo {
-            append_to_log(&format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim()));
+            let message = format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim());
+            append_to_log(&message);
+            
             if exec_hash.trim() == "9b3c53dd26a23e5f97117f78951e33b826140eae23108398299b33ad30572a22".to_string() {
-                append_to_log(&format!("[Info] No tamper found for IDS."));
+                info_counter += 1; // Increment the info counter
+                if info_counter >= 100 {
+                    append_to_log("[Info] No tamper found for IDS.");
+                    info_counter = 0; // Reset the counter
+                }
             } else {
-                append_to_log(&format!("[Serious] Hash for IDS not matching."));
+                append_to_log("[Serious] Hash for IDS not matching.");
                 if let Err(e) = reinstall_ctpb_tpm() {
                     append_to_log(&format!("[INTERNAL ERROR]: {}", e));
                 } else {
-                    append_to_log(&format!("[Info] IDS Installation completed successfully!"));
+                    append_to_log("[Info] IDS Installation completed successfully!");
                 }
             }
         } else {
-            append_to_log(&format!("[Warning] Unable to hash IDS binary."));
+            append_to_log("[Warning] Unable to hash IDS binary.");
         }
         
 
         //check IDS is running
         let service_name = "Chromia.service";
         match is_service_running(service_name) {
-            Ok(true) => append_to_log(&format!("[Info] '{}' is running.", service_name)),
+            Ok(true) => {
+                info_counter += 1; // Increment the info counter
+                if info_counter >= 100 {
+                    append_to_log(&format!("[Info] '{}' is running.", service_name));
+                    info_counter = 0; // Reset the counter
+                }
+            }
             Ok(false) => {
                 append_to_log(&format!("[CRITICAL] '{}' is not running.", service_name));
                 let _ = start_ids();
             }
             Err(e) => append_to_log(&format!("[INTERNAL ERROR] Error checking status: {}", e)),
         }
-        
     }
-    
+        
 }
+    
+
 
 fn start_ids() -> io::Result<()> {
     let output = Command::new("sudo")
