@@ -138,7 +138,7 @@ fn reinstall_ids() -> Result<(), io::Error> {
         .status()?;
     
     if !clone_status.success() {
-        eprintln!("Failed to clone the repository.");
+        eprintln!("Failed to clone the binary.");
         return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
 
