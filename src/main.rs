@@ -55,7 +55,7 @@ fn main() {
                 }
             } else {
                 append_to_log("[Serious] Hash for IDS not matching.");
-                if let Err(e) = reinstall_ctpb_tpm() {
+                if let Err(e) = reinstall_ids() {
                     append_to_log(&format!("[INTERNAL ERROR]: {}", e));
                 } else {
                     append_to_log("[Info] IDS Installation completed successfully!");
@@ -106,27 +106,56 @@ fn start_ids() -> io::Result<()> {
 }
 
 
-fn reinstall_ctpb_tpm() -> Result<(), io::Error> {
-    // Clone the repository
-    Command::new("git")
-        .args(&["clone", "https://github.com/brokenpip/ctpb_ids.git", "/tmp/Chromia/TPM"])
+fn reinstall_ids() -> Result<(), io::Error> {
+    // Step 1: Clone the repository
+    let clone_status = Command::new("git")
+        .args(&[
+            "clone",
+            "--branch",
+            "mainpluslockfile",
+            "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System.git",
+            "/tmp/Chromia/IDS",
+        ])
         .status()?;
+    
+    if !clone_status.success() {
+        eprintln!("Failed to clone the repository.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
+    }
 
-    // Change directory and build the project
-    Command::new("cargo")
-        .current_dir("/tmp/Chromia/TPM/ctpb_ids")
+    // Step 2: Change directory and build the project
+    let build_status = Command::new("cargo")
         .args(&["build", "--release"])
+        .current_dir("/tmp/Chromia/IDS")
         .status()?;
+    
+    if !build_status.success() {
+        eprintln!("Failed to build the project.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Build failed"));
+    }
 
-    // Move the built binary to /bin/Chromia
-    Command::new("sudo")
-        .args(&["mv", "/tmp/Chromia/TPM/ctpb_ids/target/release/ctpb_tpm", "/bin/Chromia"])
+    // Step 3: Create the target directory and move the binary
+    let create_dir_status = Command::new("sudo")
+        .args(&["mkdir", "-p", "/bin/Chromia"])
         .status()?;
+    
+    if !create_dir_status.success() {
+        eprintln!("Failed to create the directory.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Directory creation failed"));
+    }
 
-    // Clean up
-    Command::new("sudo")
-        .args(&["rm", "-rf", "/tmp/Chromia"])
+    let move_status = Command::new("sudo")
+        .args(&[
+            "mv",
+            "/tmp/Chromia/IDS/target/release/Chromia",
+            "/bin/Chromia",
+        ])
         .status()?;
+    
+    if !move_status.success() {
+        eprintln!("Failed to move the binary.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Move failed"));
+    }
 
     Ok(())
 }
