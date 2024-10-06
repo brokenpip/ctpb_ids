@@ -39,25 +39,6 @@ fn main() {
         }
         i += 1;
 
-        //self-check TPM binary is correct
-        let bintpm_path = "/bin/Chromia/ctpb_tpm";
-        let (bbo, exec_hash) = genhash(&bintpm_path);
-        if bbo {
-            append_to_log(&format!("[DEBUG] TPM Hash: '{}'", exec_hash.trim()));
-            if exec_hash.trim() == "80151b0cc10f937dabcda74a68557f32437a59838216b1f3eabe0bd02ef3b4c2".to_string() {
-                append_to_log(&format!("[Info] No tamper found for TPM."));
-            } else {
-                append_to_log(&format!("[Serious] Hash for TPM not matching."));
-                if let Err(e) = reinstall_ctpb_tpm() {
-                    append_to_log(&format!("[INTERNAL ERROR]: {}", e));
-                } else {
-                    append_to_log(&format!("[Info] TPM Installation completed successfully!"));
-                }
-            }
-        } else {
-            append_to_log(&format!("[Warning] Unable to hash TPM binary."));
-        }
-
         //check IDS binary is correct
         let bintpm_path = "/bin/Chromia/Chromia";
         let (bbo, exec_hash) = genhash(&bintpm_path);
