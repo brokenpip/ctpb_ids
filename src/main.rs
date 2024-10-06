@@ -33,7 +33,7 @@ fn main() {
 
     loop {
         //rate limiter
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_millis(50));
         if i >= num_iterations {
             break;
         }
