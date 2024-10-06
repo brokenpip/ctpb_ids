@@ -5,6 +5,8 @@ use std::process::Command;
 use std::io::Write;
 use std::str;
 use std::io;
+use std::fs;
+use std::path::Path;
 
 
 
@@ -107,6 +109,15 @@ fn start_ids() -> io::Result<()> {
 
 
 fn reinstall_ids() -> Result<(), io::Error> {
+    // step 0: clean work area
+    if Path::new("/tmp/Chromia").exists() {
+        if let Err(e) = fs::remove_dir_all("/tmp/Chromia") {
+            eprintln!("Failed to remove /tmp/Chromia: {}", e);
+        } else {
+            println!("Removed /tmp/Chromia directory.");
+        }
+    }
+    
     // Step 1: Clone the repository
     let clone_status = Command::new("git")
         .args(&[
