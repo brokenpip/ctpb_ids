@@ -46,8 +46,8 @@ fn main() {
         let bintpm_path = "/bin/Chromia/Chromia";
         let (bbo, exec_hash) = genhash(&bintpm_path);
         if bbo {
-            let message = format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim());
-            append_to_log(&message);
+            //let message = format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim());
+            //append_to_log(&message);
             
             if exec_hash.trim() == "90e864b5d26e7ca64031f1435b4c7de034abfa9266558061e009bdae6d318c3a".to_string() {
                 info_counter += 1; // Increment the info counter
@@ -117,15 +117,12 @@ fn reinstall_ids() -> Result<(), io::Error> {
             println!("Removed /tmp/Chromia directory.");
         }
     }
-    
+
     // Step 1: Clone the repository
     let clone_status = Command::new("git")
         .args(&[
-            "clone",
-            "--branch",
-            "mainpluslockfile",
-            "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System.git",
-            "/tmp/Chromia/IDS",
+            "wget",
+            "https://raw.githubusercontent.com/brokenpip/ctpb_ids/188977586f2ad182c7edb36b33d402b22881b1e8/Chromia",
         ])
         .status()?;
     
