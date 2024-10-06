@@ -47,7 +47,7 @@ fn main() {
             let message = format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim());
             append_to_log(&message);
             
-            if exec_hash.trim() == "c7be4b2409bfd0bd1e26a3522b04ae7c35ef3ec6ba019786804b19efde50a9cf".to_string() {
+            if exec_hash.trim() == "90e864b5d26e7ca64031f1435b4c7de034abfa9266558061e009bdae6d318c3a".to_string() {
                 info_counter += 1; // Increment the info counter
                 if info_counter >= 100 {
                     append_to_log("[Info] No tamper found for IDS.");
