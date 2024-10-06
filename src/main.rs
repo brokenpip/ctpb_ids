@@ -118,31 +118,7 @@ fn reinstall_ids() -> Result<(), io::Error> {
         }
     }
 
-    // Step 1: Clone the repository
-    let clone_status = Command::new("git")
-        .args(&[
-            "wget",
-            "https://raw.githubusercontent.com/brokenpip/ctpb_ids/188977586f2ad182c7edb36b33d402b22881b1e8/Chromia",
-        ])
-        .status()?;
-    
-    if !clone_status.success() {
-        eprintln!("Failed to clone the repository.");
-        return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
-    }
-
-    // Step 2: Change directory and build the project
-    let build_status = Command::new("cargo")
-        .args(&["build", "--release"])
-        .current_dir("/tmp/Chromia/IDS")
-        .status()?;
-    
-    if !build_status.success() {
-        eprintln!("Failed to build the project.");
-        return Err(io::Error::new(io::ErrorKind::Other, "Build failed"));
-    }
-
-    // Step 3: Create the target directory and move the binary
+    // Step 1: Create the target directory and move the binary
     let create_dir_status = Command::new("sudo")
         .args(&["mkdir", "-p", "/bin/Chromia"])
         .status()?;
@@ -152,17 +128,18 @@ fn reinstall_ids() -> Result<(), io::Error> {
         return Err(io::Error::new(io::ErrorKind::Other, "Directory creation failed"));
     }
 
-    let move_status = Command::new("sudo")
+    // Step 2: Clone the repository
+    let clone_status = Command::new("wget")
         .args(&[
-            "mv",
-            "/tmp/Chromia/IDS/target/release/Chromia",
-            "/bin/Chromia",
+            "https://raw.githubusercontent.com/brokenpip/ctpb_ids/188977586f2ad182c7edb36b33d402b22881b1e8/Chromia",
+            "-P",
+            "/bin/Chromia"
         ])
         .status()?;
     
-    if !move_status.success() {
-        eprintln!("Failed to move the binary.");
-        return Err(io::Error::new(io::ErrorKind::Other, "Move failed"));
+    if !clone_status.success() {
+        eprintln!("Failed to clone the repository.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
 
     Ok(())
