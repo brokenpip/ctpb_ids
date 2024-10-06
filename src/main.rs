@@ -174,6 +174,10 @@ fn is_service_running(service_name: &str) -> Result<bool, io::Error> {
         .args(&["is-active", service_name])
         .output()?;
 
+    if !Path::new("/bin/Chromia/Chromia").exists() {
+        let _ = reinstall_ids(); 
+    }
+
     // Check if the command was successful
     if output.status.success() {
         // Check the output to see if the service is active
