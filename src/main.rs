@@ -63,7 +63,7 @@ fn main() {
         let (bbo, exec_hash) = genhash(&bintpm_path);
         if bbo {
             append_to_log(&format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim()));
-            if exec_hash.trim() == "80151b0cc10f937dabcda74a68557f32437a59838216b1f3eabe0bd02ef3b4c2".to_string() {
+            if exec_hash.trim() == "4aadf5d3b0865451747b4832647852acc80c0985da3979499296a5ce439bd711".to_string() {
                 append_to_log(&format!("[Info] No tamper found for IDS."));
             } else {
                 append_to_log(&format!("[Serious] Hash for IDS not matching."));
