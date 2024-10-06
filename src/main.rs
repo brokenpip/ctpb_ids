@@ -1,83 +1,15 @@
-use core::time;
-use std::{fs, thread};
-use std::path::Path;
-use std::process::{self};
-use std::fs::{File, OpenOptions};
-use std::process::{Command,Stdio};
+use std::time::Duration;
+use std::thread;
+use std::fs::OpenOptions;
+use std::process::Command;
 use std::io::Write;
 use std::str;
 use std::io;
-use std::time::Duration;
+
 
 
 fn main() {
     println!("Hello, world!");
-    
-    let tpm_folder_a = "/var/chromia";
-    let tpm_folder_p = "/var/chromia/tpm";
-    let _ = append_to_log(&tpm_folder_a);
-    let fpath = Path::new(tpm_folder_a);
-    if !fpath.exists() {
-        // Create the folder
-        match fs::create_dir(fpath) {
-            Ok(_) => {
-                append_to_log(&format!("Directory created successfully."));
-                let fpath2 = Path::new(tpm_folder_p);
-                match fs::create_dir(fpath2) {
-                    Ok(_) => {
-                        append_to_log(&format!("Directory created successfully."));
-                    }
-                    Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
-                }
-            }
-            Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
-        }
-    } else {
-        println!("Folder already exists.");
-        let fpath = Path::new(tpm_folder_p);
-        if !fpath.exists() {
-            // Create the folder
-            match fs::create_dir(fpath) {
-                Ok(_) => {
-                    append_to_log(&format!("Directory created successfully."));
-                    let fpath2 = Path::new(tpm_folder_p);
-                    match fs::create_dir(fpath2) {
-                        Ok(_) => {
-                            append_to_log(&format!("Directory created successfully."));
-                        }
-                        Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
-                    }
-                }
-                Err(e) => append_to_log(&format!("Failed to create directory: {}", e)),
-            }
-        } else {
-            append_to_log(&format!("Folder already exists."));
-            
-        }
-    }
-
-    let tick = time::Duration::from_millis(1000);
-    let debug = false;
-    let target_pid = process::id();
-    let lock_path = format!("/var/chromia/tpm/{}",target_pid.to_string());
-    append_to_log(&format!("{}",lock_path.to_string())); //debug use
-
-    // 1 - see if any remnants exist
-    let (lca, lcb) = lock_check(&target_pid);
-
-    if !lca {
-        append_to_log(&format!("Previous shutdown improper!! ID of {} was found", lcb));
-    } else {
-        let _ = File::create(&lock_path);
-        if file_check(&lock_path) {
-            append_to_log(&format!("Lock file created.")) // to log
-        }
-    }
-    append_to_log(&format!("{}",debug));
-
-    
- 
-    
     // confirm hash of IDS code
    
     let ids_path = "/bin/Chromia/Chromia";
@@ -101,70 +33,65 @@ fn main() {
 
     loop {
         //rate limiter
-        thread::sleep(tick);
+        thread::sleep(Duration::from_secs(1));
         if i >= num_iterations {
             break;
         }
         i += 1;
 
-        //self-check
-        let (lca, lcb) = lock_check(&target_pid);
-        if !lca {
-            append_to_log(&format!("TPM tampered with; ID of {} was found", lcb));
-            let trouble_path = format!("/var/chromia/tpm/{}",lcb.to_string());
-            match fs::remove_file(&trouble_path) {
-                Ok(_) => append_to_log(&format!("File '{}' deleted successfully.", &lock_path)),
-                Err(e) => append_to_log(&format!("Failed to delete file '{}': {}", &lock_path, e)),
-            }
-        }
-        if lca && lcb == 0 {
-            append_to_log(&format!("TPM tampered with; lock_file deleted"));
-            let _ = File::create(&lock_path);
-            if file_check(&lock_path) {
-                append_to_log(&format!("Lock file created.")); // to log
-            }
-        }
-
-        //get IDS PID
-        
-
-        //ids check
-        let fpid = find_single_pid_by_command("Chromia".trim());
-        println!("fpid was {}", &fpid);
-        if fpid != 0 {
-            let lcc = ids_check(&fpid);
-            if lcc {
-                //println!("IDS as expected.") //debug
+        //self-check TPM binary is correct
+        let bintpm_path = "/bin/Chromia/ctpb_tpm";
+        let (bbo, exec_hash) = genhash(&bintpm_path);
+        if bbo {
+            append_to_log(&format!("[DEBUG] TPM Hash: '{}'", exec_hash.trim()));
+            if exec_hash.trim() == "80151b0cc10f937dabcda74a68557f32437a59838216b1f3eabe0bd02ef3b4c2".to_string() {
+                append_to_log(&format!("[Info] No tamper found for TPM."));
             } else {
-                append_to_log(&format!("IDS not as expected. Suspected impersonation!!"));
+                append_to_log(&format!("[Serious] Hash for TPM not matching."));
+                if let Err(e) = reinstall_ctpb_tpm() {
+                    append_to_log(&format!("[INTERNAL ERROR]: {}", e));
+                } else {
+                    append_to_log(&format!("[Info] TPM Installation completed successfully!"));
+                }
             }
         } else {
-            append_to_log(&format!("IDS not found, starting IDS"));
-            //Code to start IDS program; need either systemd linkage or path to binary
-            let _ = start_ids();
-            thread::sleep(Duration::from_secs(20))
+            append_to_log(&format!("[Warning] Unable to hash TPM binary."));
         }
 
+        //check IDS binary is correct
+        let bintpm_path = "/bin/Chromia/Chromia";
+        let (bbo, exec_hash) = genhash(&bintpm_path);
+        if bbo {
+            append_to_log(&format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim()));
+            if exec_hash.trim() == "80151b0cc10f937dabcda74a68557f32437a59838216b1f3eabe0bd02ef3b4c2".to_string() {
+                append_to_log(&format!("[Info] No tamper found for IDS."));
+            } else {
+                append_to_log(&format!("[Serious] Hash for IDS not matching."));
+                if let Err(e) = reinstall_ctpb_tpm() {
+                    append_to_log(&format!("[INTERNAL ERROR]: {}", e));
+                } else {
+                    append_to_log(&format!("[Info] IDS Installation completed successfully!"));
+                }
+            }
+        } else {
+            append_to_log(&format!("[Warning] Unable to hash IDS binary."));
+        }
+        
+
+        //check IDS is running
+        let service_name = "Chromia.service";
+        match is_service_running(service_name) {
+            Ok(true) => append_to_log(&format!("[Info] '{}' is running.", service_name)),
+            Ok(false) => {
+                append_to_log(&format!("[CRITICAL] '{}' is not running.", service_name));
+                let _ = start_ids();
+            }
+            Err(e) => append_to_log(&format!("[INTERNAL ERROR] Error checking status: {}", e)),
+        }
         
     }
-    match fs::remove_file(&lock_path) {
-        Ok(_) => {
-            let logi = format!("File '{}' deleted successfully.", lock_path);
-            let _ = append_to_log(&logi);
-        }
-        Err(e) => {append_to_log(&format!("Failed to delete file '{}': {}", &lock_path, e));}
-    }
+    
 }
-
-/*
-1. create file and lock based on process id of executing process
-1a. if file already exists with diff process ID, raise alert
-2. compare hash of a file to an unencrypted reference (to begin, to be encrypted)
-3. pipe between IDS and TPM is established, all logs are sent along to be stored in a bkp log file
-4. create log file for each run and verify against stored hashes for previous file in chain
-5. chain changes are entered into another file for encrypted storage (start as unencrypted)
-6. 
-*/
 
 fn start_ids() -> io::Result<()> {
     let output = Command::new("sudo")
@@ -174,124 +101,56 @@ fn start_ids() -> io::Result<()> {
         .output()?;
 
     if output.status.success() {
-        append_to_log(&format!("IDS started successfully."));
+        append_to_log(&format!("[Info] IDS started successfully."));
     } else {
         let error_message = String::from_utf8_lossy(&output.stderr);
-        append_to_log(&format!("Failed to start IDS: {}", error_message));
+        append_to_log(&format!("[INTERNAL ERROR] Failed to start IDS: {}", error_message));
     }
     
     Ok(())
 }
 
-fn lock_check(target_pid: &u32) -> (bool, u32) {
-    let lock_name = directory_read("/var/chromia/tpm").unwrap_or_else(|| "aa".to_string());
-    let lock_pid: u32 = lock_name.parse().unwrap_or(0);
-    if lock_pid == 0 {
-        return (true, 0);
-    } else if lock_pid == *target_pid {
-        return (true, *target_pid);
+
+fn reinstall_ctpb_tpm() -> Result<(), io::Error> {
+    // Clone the repository
+    Command::new("git")
+        .args(&["clone", "https://github.com/brokenpip/ctpb_ids.git", "/tmp/Chromia/TPM"])
+        .status()?;
+
+    // Change directory and build the project
+    Command::new("cargo")
+        .current_dir("/tmp/Chromia/TPM/ctpb_ids")
+        .args(&["build", "--release"])
+        .status()?;
+
+    // Move the built binary to /bin/Chromia
+    Command::new("sudo")
+        .args(&["mv", "/tmp/Chromia/TPM/ctpb_ids/target/release/ctpb_tpm", "/bin/Chromia"])
+        .status()?;
+
+    // Clean up
+    Command::new("sudo")
+        .args(&["rm", "-rf", "/tmp/Chromia"])
+        .status()?;
+
+    Ok(())
+}
+
+fn is_service_running(service_name: &str) -> Result<bool, io::Error> {
+    // Execute the systemctl command to check the service status
+    let output = Command::new("systemctl")
+        .args(&["is-active", service_name])
+        .output()?;
+
+    // Check if the command was successful
+    if output.status.success() {
+        // Check the output to see if the service is active
+        let status = String::from_utf8_lossy(&output.stdout);
+        Ok(status.trim() == "active")
     } else {
-        return (false, lock_pid);
+        // If the service is not found or other errors occur
+        Ok(false)
     }
-}
-
-fn ids_check(target_pid: &u32) -> bool {
-    let lock_name = directory_read("/var/chromia/ids").unwrap_or_else(|| "aa".to_string());
-    let lock_pid: u32 = lock_name.parse().unwrap_or(0);
-
-    let (bbo, pid_result) = match_pid(&lock_pid.to_string());
-    //println!("match pid result DEBUG ONLY was {}{}", bbo,&pid_result.trim());
-    /*if pid_result.trim() == "./emulate" {
-        println!("trueay");
-    } */
-    if bbo && pid_result.trim() == "Chromia" {
-        if lock_pid == *target_pid {
-            return true;
-        } else {
-            append_to_log(&format!("Found process from lock folder but did not match target."));
-            return false;
-        }
-    } else {
-        append_to_log(&format!("No process match from lock folder, target PID was {}", target_pid));
-        return false;
-    }
-}
-
-fn match_pid(key: &str) -> (bool, String) {
-    if !key.chars().all(char::is_numeric) {
-        append_to_log(&format!("Invalid PID: '{}'", key));
-        return (false, String::new());
-    }
-
-    let output = match Command::new("ps")
-        .arg("-q")
-        .arg(key)
-        .arg("-o")
-        .arg("cmd=")
-        .output() {
-        
-        Ok(output) => output,
-        Err(err) => {
-            append_to_log(&format!("Failed to execute command for key '{}': {}", key, err));
-            return (false, String::new());
-        }
-    };
-    // Convert output to string
-    let stdout_str = String::from_utf8_lossy(&output.stdout).into_owned();
-    let stderr_str = String::from_utf8_lossy(&output.stderr).into_owned();
-    //println!("mpid out was {}", &stdout_str);
-    //println!("{}", stdout_str);
-
-    if !stderr_str.is_empty() {
-        append_to_log(&format!("stderr for key '{}': {}", key, stderr_str));
-    }
-
-    (true, stdout_str)
-}
-
-
-fn find_single_pid_by_command(cmd: &str) -> u32 {
-    
-    let pgrep_output = Command::new("pgrep")
-    .arg("-f") // Match against the full command line
-    .arg(cmd)
-    .stdout(Stdio::piped()) // Pipe the output
-    .output(); // Capture the output
-
-    // Use match to handle the Result without terminating
-    let pgrep_output = match pgrep_output {
-        Ok(output) => output,
-        Err(_) => return 0, // Return 0 if the command fails
-    };
-
-    // Create a longer-lived variable for the output
-    let output_str = String::from_utf8_lossy(&pgrep_output.stdout);
-    let first_line = output_str.lines().next().unwrap_or(""); // Handle case with no output
-    //println!("{:?}", &last_line);
-
-    // Attempt to parse and return the PID, returning 0 on failure
-    first_line.trim().parse::<u32>().unwrap_or(0)
-}
-
-fn file_check(path: &str) -> bool {
-    Path::new(path).exists()
-}
-
-fn directory_read(path: &str) -> Option<String> {
-    let entries = fs::read_dir(path).ok()?;
-
-    if let Some(entry) = entries.into_iter().next() {
-        let entry = entry.ok()?;
-        let path = entry.path();
-
-        if path.is_file() {
-            if let Some(name_str) = path.file_name().and_then(|name| name.to_str()) {
-                return Some(name_str.to_string());
-            }
-        }
-    }
-
-    None
 }
 
 fn genhash(key: &str) -> (bool, String) {
@@ -302,7 +161,7 @@ fn genhash(key: &str) -> (bool, String) {
         
         Ok(output) => output,
         Err(err) => {
-            append_to_log(&format!("Failed to hash for key '{}': {}", key, err));
+            append_to_log(&format!("[INTERNAL ERROR] Failed to hash for key '{}': {}", key, err));
             return (false, String::new());
         }
     };
@@ -313,7 +172,7 @@ fn genhash(key: &str) -> (bool, String) {
     //println!("{}", stdout_str);
 
     if !stderr_str.is_empty() {
-        append_to_log(&format!("stderr for key '{}': {}", key, stderr_str));
+        append_to_log(&format!("[Info] stderr for key '{}': {}", key, stderr_str));
     }
 
     (true, stdout_str)
