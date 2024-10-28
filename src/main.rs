@@ -36,7 +36,7 @@ fn main() {
 
     loop {
         //rate limiter
-        thread::sleep(Duration::from_millis(50));
+        thread::sleep(Duration::from_millis(5000));
         if i >= num_iterations {
             break;
         }
@@ -57,6 +57,11 @@ fn main() {
                 }
             } else {
                 append_to_log("[Serious] Hash for IDS not matching.");
+                match reinstall_ids() {
+                    Ok(()) => println!("Binary cloned and moved successfully!"),
+                    Err(e) => eprintln!("Error: {}", e),
+                }
+                println!("Marker.");
                 if let Err(e) = reinstall_ids() {
                     append_to_log(&format!("[INTERNAL ERROR]: {}", e));
                 } else {
@@ -113,6 +118,8 @@ fn reinstall_ids() -> Result<(), io::Error> {
     let temp_dir = "/tmp/tpm";
     let target_binary_path = "/bin/Chromia";
 
+    fs::remove_dir_all(temp_dir)?;
+    println!("Marker reinstall.");
     // Clone the repository into the temporary directory
     let clone_status = Command::new("git")
         .args(&[
