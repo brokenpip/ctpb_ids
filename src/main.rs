@@ -19,7 +19,7 @@ fn main() {
     let (bbo, exec_hash) = genhash(&ids_path);
     if bbo {
         append_to_log(&format!("Hash: '{}'", exec_hash.trim()));
-        if exec_hash.trim() == "80151b0cc10f937dabcda74a68557f32437a59838216b1f3eabe0bd02ef3b4c2".to_string() {
+        if exec_hash.trim() == "5a86a824066a72082d2dee1936466911df38a53f8531ec54fe50f2cedb44e691".to_string() {
             append_to_log(&format!("No tamper found for IDS."));
         } else {
             append_to_log(&format!("Hash for IDS not matching."));
@@ -49,7 +49,7 @@ fn main() {
             //let message = format!("[DEBUG] IDS Hash: '{}'", exec_hash.trim());
             //append_to_log(&message);
             
-            if exec_hash.trim() == "90e864b5d26e7ca64031f1435b4c7de034abfa9266558061e009bdae6d318c3a".to_string() {
+            if exec_hash.trim() == "5a86a824066a72082d2dee1936466911df38a53f8531ec54fe50f2cedb44e691".to_string() {
                 info_counter += 1; // Increment the info counter
                 if info_counter >= 100 {
                     append_to_log("[Info] No tamper found for IDS.");
