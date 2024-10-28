@@ -150,8 +150,9 @@ fn reinstall_ids() -> Result<(), io::Error> {
         return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
 
-    let fix_perm = Command::new("chmod")
+    let fix_perm = Command::new("sudo")
         .args(&[
+            "chmod"
             "+x",
             "/bin/Chromia/Chromia"
         ])
