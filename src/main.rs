@@ -87,6 +87,7 @@ fn main() {
             Ok(false) => {
                 append_to_log(&format!("[CRITICAL] '{}' is not running.", service_name));
                 let _ = start_ids();
+                thread::sleep(Duration::from_millis(5000));
             }
             Err(e) => append_to_log(&format!("[INTERNAL ERROR] Error checking status: {}", e)),
         }
@@ -148,6 +149,19 @@ fn reinstall_ids() -> Result<(), io::Error> {
         eprintln!("Failed to clone the binary.");
         return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
+
+    let fix_perm = Command::new("chmod")
+        .args(&[
+            "+x",
+            "/bin/Chromia/Chromia"
+        ])
+        .status()?;
+
+    if !fix_perm.success() {
+        eprintln!("Failed to update permission.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Chmod failed"));
+    }
+
     thread::sleep(Duration::from_millis(5000));
     Ok(())
 }
