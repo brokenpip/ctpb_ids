@@ -117,8 +117,8 @@ fn reinstall_ids() -> Result<(), io::Error> {
     // Define the temporary directory and the target binary path
     let temp_dir = "/tmp/tpm";
     let target_binary_path = "/bin/Chromia";
-    if(std::path::Path::new(temp_dir).exists()){
-        fs::remove_dir_all(temp_dir)?;
+    if std::path::Path::new(temp_dir).exists(){
+       fs::remove_dir_all(temp_dir)?;
     }
     println!("Marker reinstall.");
     // Clone the repository into the temporary directory
@@ -137,8 +137,20 @@ fn reinstall_ids() -> Result<(), io::Error> {
         return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
 
+    std::env::set_current_dir(temp_dir)?;
+
+    // Build the cloned repository
+    let build_status = Command::new("cargo")
+        .args(&["build", "--release"]) // Use --release for optimized build
+        .status()?;
+
+    if !build_status.success() {
+        eprintln!("Failed to build the project.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Build failed"));
+    }
+
     // Move the compiled binary from the temporary directory to the target path
-    let binary_source = format!("{}/Chromia", temp_dir); // Adjust if necessary
+    let binary_source = format!("{}/target/release/Chromia", temp_dir); // Adjust to point to the built binary
     fs::rename(&binary_source, target_binary_path)?;
 
     Ok(())
