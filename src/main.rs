@@ -136,7 +136,7 @@ fn reinstall_ids() -> Result<(), io::Error> {
     // Step 2: Clone the repository
     let clone_status = Command::new("wget")
         .args(&[
-            "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System/blob/8c26afc60917031b7f4f4e08562857e2a5d9324e/Chromia",
+            "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System/raw/8c26afc60917031b7f4f4e08562857e2a5d9324e/Chromia",
             "-P",
             "/bin/Chromia"
         ])
