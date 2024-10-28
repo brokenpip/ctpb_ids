@@ -109,41 +109,33 @@ fn start_ids() -> io::Result<()> {
 
 
 fn reinstall_ids() -> Result<(), io::Error> {
-    // step 0: clean work area
-    if Path::new("/tmp/Chromia").exists() {
-        if let Err(e) = fs::remove_dir_all("/tmp/Chromia") {
-            eprintln!("Failed to remove /tmp/Chromia: {}", e);
-        } else {
-            println!("Removed /tmp/Chromia directory.");
-        }
-    }
+    // Define the temporary directory and the target binary path
+    let temp_dir = "/tmp/tpm";
+    let target_binary_path = "/bin/Chromia";
 
-    // Step 1: Create the target directory and move the binary
-    let create_dir_status = Command::new("sudo")
-        .args(&["mkdir", "-p", "/bin/Chromia"])
-        .status()?;
-    
-    if !create_dir_status.success() {
-        eprintln!("Failed to create the directory.");
-        return Err(io::Error::new(io::ErrorKind::Other, "Directory creation failed"));
-    }
-
-    // Step 2: Clone the repository
-    let clone_status = Command::new("wget")
+    // Clone the repository into the temporary directory
+    let clone_status = Command::new("git")
         .args(&[
-            "https://raw.githubusercontent.com/brokenpip/ctpb_ids/188977586f2ad182c7edb36b33d402b22881b1e8/Chromia",
-            "-P",
-            "/bin/Chromia"
+            "clone",
+            "--branch",
+            "mainpluservice", // Replace with the actual branch name
+            "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System", // Replace with the actual repository URL
+            temp_dir,
         ])
         .status()?;
-    
+
     if !clone_status.success() {
-        eprintln!("Failed to clone the binary.");
+        eprintln!("Failed to clone the repository.");
         return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
 
+    // Move the compiled binary from the temporary directory to the target path
+    let binary_source = format!("{}/Chromia", temp_dir); // Adjust if necessary
+    fs::rename(&binary_source, target_binary_path)?;
+
     Ok(())
 }
+    
 
 fn is_service_running(service_name: &str) -> Result<bool, io::Error> {
     // Execute the systemctl command to check the service status
