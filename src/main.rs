@@ -114,44 +114,38 @@ fn start_ids() -> io::Result<()> {
 
 
 fn reinstall_ids() -> Result<(), io::Error> {
-    // Define the temporary directory and the target binary path
-    let temp_dir = "/tmp/tpm";
-    let target_binary_path = "/bin/Chromia";
-    if std::path::Path::new(temp_dir).exists(){
-       fs::remove_dir_all(temp_dir)?;
+    // step 0: clean work area
+    if Path::new("/tmp/Chromia").exists() {
+        if let Err(e) = fs::remove_dir_all("/tmp/Chromia") {
+            eprintln!("Failed to remove /tmp/Chromia: {}", e);
+        } else {
+            println!("Removed /tmp/Chromia directory.");
+        }
     }
-    println!("Marker reinstall.");
-    // Clone the repository into the temporary directory
-    let clone_status = Command::new("git")
+
+    // Step 1: Create the target directory and move the binary
+    let create_dir_status = Command::new("sudo")
+        .args(&["mkdir", "-p", "/bin/Chromia"])
+        .status()?;
+    
+    if !create_dir_status.success() {
+        eprintln!("Failed to create the directory.");
+        return Err(io::Error::new(io::ErrorKind::Other, "Directory creation failed"));
+    }
+
+    // Step 2: Clone the repository
+    let clone_status = Command::new("wget")
         .args(&[
-            "clone",
-            "--branch",
-            "mainpluservice", // Replace with the actual branch name
-            "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System", // Replace with the actual repository URL
-            temp_dir,
+            "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System/blob/8c26afc60917031b7f4f4e08562857e2a5d9324e/Chromia",
+            "-P",
+            "/bin/Chromia"
         ])
         .status()?;
-
+    
     if !clone_status.success() {
-        eprintln!("Failed to clone the repository.");
+        eprintln!("Failed to clone the binary.");
         return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
-
-    std::env::set_current_dir(temp_dir)?;
-
-    // Build the cloned repository
-    let build_status = Command::new("cargo")
-        .args(&["build", "--release"]) // Use --release for optimized build
-        .status()?;
-
-    if !build_status.success() {
-        eprintln!("Failed to build the project.");
-        return Err(io::Error::new(io::ErrorKind::Other, "Build failed"));
-    }
-
-    // Move the compiled binary from the temporary directory to the target path
-    let binary_source = format!("{}/target/release/Chromia", temp_dir); // Adjust to point to the built binary
-    fs::rename(&binary_source, target_binary_path)?;
 
     Ok(())
 }
