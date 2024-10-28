@@ -36,7 +36,7 @@ fn main() {
 
     loop {
         //rate limiter
-        thread::sleep(Duration::from_millis(5000));
+        
         if i >= num_iterations {
             break;
         }
@@ -57,16 +57,17 @@ fn main() {
                 }
             } else {
                 append_to_log("[Serious] Hash for IDS not matching.");
-                match reinstall_ids() {
-                    Ok(()) => println!("Binary cloned and moved successfully!"),
-                    Err(e) => eprintln!("Error: {}", e),
-                }
+                //match reinstall_ids() {
+                //    Ok(()) => println!("Binary cloned and moved successfully!"),
+                //    Err(e) => eprintln!("Error: {}", e),
+                //}
                 println!("Marker.");
                 if let Err(e) = reinstall_ids() {
                     append_to_log(&format!("[INTERNAL ERROR]: {}", e));
                 } else {
                     append_to_log("[Info] IDS Installation completed successfully!");
                 }
+                thread::sleep(Duration::from_millis(10000));
             }
         } else {
             append_to_log("[Warning] Unable to hash IDS binary.");
@@ -134,8 +135,9 @@ fn reinstall_ids() -> Result<(), io::Error> {
     }
 
     // Step 2: Clone the repository
-    let clone_status = Command::new("wget")
+    let clone_status = Command::new("sudo")
         .args(&[
+            "wget",
             "https://github.com/erikkvietelaitis/COS40005-Intrusion-Detection-System/blob/8c26afc60917031b7f4f4e08562857e2a5d9324e/Chromia",
             "-P",
             "/bin/Chromia"
@@ -146,7 +148,7 @@ fn reinstall_ids() -> Result<(), io::Error> {
         eprintln!("Failed to clone the binary.");
         return Err(io::Error::new(io::ErrorKind::Other, "Clone failed"));
     }
-
+    thread::sleep(Duration::from_millis(5000));
     Ok(())
 }
     
