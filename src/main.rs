@@ -152,7 +152,7 @@ fn reinstall_ids() -> Result<(), io::Error> {
 
     let fix_perm = Command::new("sudo")
         .args(&[
-            "chmod"
+            "chmod",
             "+x",
             "/bin/Chromia/Chromia"
         ])
