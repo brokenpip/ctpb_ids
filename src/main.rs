@@ -117,8 +117,9 @@ fn reinstall_ids() -> Result<(), io::Error> {
     // Define the temporary directory and the target binary path
     let temp_dir = "/tmp/tpm";
     let target_binary_path = "/bin/Chromia";
-
-    fs::remove_dir_all(temp_dir)?;
+    if(std::path::Path::new(temp_dir).exists()){
+        fs::remove_dir_all(temp_dir)?;
+    }
     println!("Marker reinstall.");
     // Clone the repository into the temporary directory
     let clone_status = Command::new("git")
